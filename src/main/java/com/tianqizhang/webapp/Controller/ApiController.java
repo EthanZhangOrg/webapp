@@ -8,7 +8,6 @@ import com.tianqizhang.webapp.Services.MyUserDetailsService;
 import com.tianqizhang.webapp.Utils.JwtUtil;
 import com.tianqizhang.webapp.Utils.RestResponse;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -18,14 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
-
-import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
-
-import javax.ws.rs.HeaderParam;
-import javax.ws.rs.core.MultivaluedHashMap;
-import javax.ws.rs.core.Response;
 
 @RestController
 public class ApiController {
@@ -46,29 +38,8 @@ public class ApiController {
         return "Welcome!";
     }
 
-//    @GetMapping(value = "/v1/user/self")
-//    // headers
-//    public RestResponse getUserInfo() {
-//        User user = userRepo.findByUsername(username);
-//
-//        Map<String, Object> usermap = new HashMap<>();
-//        usermap.put("id", user.getId());
-//        usermap.put("first_name", user.getFirst_name());
-//        usermap.put("last_name", user.getLast_name());
-//        usermap.put("username", username);
-//        usermap.put("account_created", user.getAccount_created());
-//        usermap.put("account_updated", user.getAccount_updated());
-//
-//        return RestResponse.buildSuccess(new JSONObject(usermap));
-//    }
-
     @GetMapping(value = "/v1/user/self")
     public RestResponse getUserInfo(@RequestHeader Map<String, String> headers) {
-//        headers.forEach((key, value) -> {
-//            System.out.println("Header " + key + " = " + value);
-//        });
-//        System.out.println("----------------------------------------");
-//        System.out.println(headers.get("authorization"));
         String username;
         try{
             String token = headers.get("authorization").split(" ")[1];
@@ -136,12 +107,22 @@ public class ApiController {
 
         String username = userJsonObject.getString("username");
 
+        if (username == null) {
+            return RestResponse.buildBadRequest(null);
+        }
+
         String regex = "^[a-zA-Z0-9_!#$%&'*+/=?`{|}~^.-]+@[a-zA-Z0-9.-]+$";
         if (!username.matches(regex)) {
             return RestResponse.buildBadRequest(null);
         }
 
         if (userRepo.findByUsername(username) != null) {
+            return RestResponse.buildBadRequest(null);
+        }
+
+        if (userJsonObject.getString("first_name") == null ||
+                userJsonObject.getString("last_name") == null ||
+                userJsonObject.getString("password") == null) {
             return RestResponse.buildBadRequest(null);
         }
 
@@ -153,12 +134,6 @@ public class ApiController {
         userRepo.save(user);
         return RestResponse.buildSuccess(null);
     }
-
-//    public User updateUser(String field) {
-//        if (field.equals("first_name")) {
-//
-//        }
-//    }
 
     @RequestMapping(value = "/v1/user/authenticate", method = RequestMethod.POST)
     public ResponseEntity<?> createAuthenticationToken(@RequestBody AuthenticationRequest authenticationRequest) throws Exception {
