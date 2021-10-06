@@ -1,12 +1,10 @@
 package com.tianqizhang.webapp.Controller;
 
-import com.tianqizhang.webapp.Models.AuthenticationRequest;
-import com.tianqizhang.webapp.Models.AuthenticationResponse;
 import com.tianqizhang.webapp.Models.User;
 import com.tianqizhang.webapp.Repo.UserRepo;
 import com.tianqizhang.webapp.Services.MyUserDetailsService;
-import com.tianqizhang.webapp.Utils.JwtUtil;
 import com.tianqizhang.webapp.Utils.RestResponse;
+import org.mindrot.bcrypt.BCrypt;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -15,6 +13,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 import com.alibaba.fastjson.JSONObject;
@@ -23,12 +22,6 @@ import com.alibaba.fastjson.JSONObject;
 public class ApiController {
     @Autowired
     private UserRepo userRepo;
-
-    @Autowired
-    private AuthenticationManager authenticationManager;
-
-    @Autowired
-    private JwtUtil jwtTokenUtil;
 
     @Autowired
     private MyUserDetailsService userDetailsService;
@@ -40,15 +33,20 @@ public class ApiController {
 
     @GetMapping(value = "/v1/user/self")
     public RestResponse getUserInfo(@RequestHeader Map<String, String> headers) {
-        String username;
-        try{
-            String token = headers.get("authorization").split(" ")[1];
-            username = JwtUtil.extractUsername(token);
-        } catch (Exception e) {
-            return RestResponse.buildUnauthorized(null);
-        }
+
+        String token = headers.get("authorization").split(" ")[1];
+        String usernameAndPassword = new String(Base64.getDecoder().decode(token));
+        String username = usernameAndPassword.split(":")[0];
+        String password = usernameAndPassword.split(":")[1];
 
         User user = userRepo.findByUsername(username);
+        if (user == null) {
+            return RestResponse.buildBadRequest(null);
+        }
+
+        if (!BCrypt.checkpw(password, user.getPassword())) {
+            return RestResponse.buildBadRequest(null);
+        }
 
         Map<String, Object> usermap = new HashMap<>();
         usermap.put("id", user.getId());
@@ -63,26 +61,32 @@ public class ApiController {
 
     @PutMapping(value = "/v1/user/self")
     public RestResponse updateUserInfo(@RequestHeader Map<String, String> headers, @RequestBody String jsonstr) {
-        String username;
-        try{
-            String token = headers.get("authorization").split(" ")[1];
-            username = JwtUtil.extractUsername(token);
-        } catch (Exception e) {
-            return RestResponse.buildUnauthorized(null);
-        }
+
+        String token = headers.get("authorization").split(" ")[1];
+        String usernameAndPassword = new String(Base64.getDecoder().decode(token));
+        String username = usernameAndPassword.split(":")[0];
+        String password = usernameAndPassword.split(":")[1];
 
         User user = userRepo.findByUsername(username);
+        if (user == null) {
+            return RestResponse.buildBadRequest(null);
+        }
+
+        if (!BCrypt.checkpw(password, user.getPassword())) {
+            return RestResponse.buildBadRequest(null);
+        }
+
         JSONObject userJsonObject = JSONObject.parseObject(jsonstr);
 
         if (!userJsonObject.containsKey("username")) {
-            return RestResponse.buildUnauthorized(null);
+            return RestResponse.buildBadRequest(null);
         }
 
         for (String key : userJsonObject.keySet()) {
             // Check if the username is correct. User can't update other user's info.
             if (key.equals("username")) {
                 if (!userJsonObject.getString(key).equals(username)) {
-                    return RestResponse.buildUnauthorized(null);
+                    return RestResponse.buildBadRequest(null);
                 }
             }
 
@@ -134,27 +138,5 @@ public class ApiController {
         userRepo.save(user);
         return RestResponse.buildSuccess(null);
     }
-
-    @RequestMapping(value = "/v1/user/authenticate", method = RequestMethod.POST)
-    public ResponseEntity<?> createAuthenticationToken(@RequestBody AuthenticationRequest authenticationRequest) throws Exception {
-
-        try {
-            authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(authenticationRequest.getUsername(), authenticationRequest.getPassword())
-            );
-        }
-        catch (BadCredentialsException e) {
-            throw new Exception("Incorrect username or password", e);
-        }
-
-
-        final UserDetails userDetails = userDetailsService
-                .loadUserByUsername(authenticationRequest.getUsername());
-
-        final String jwt = jwtTokenUtil.generateToken(userDetails);
-
-        return ResponseEntity.ok(new AuthenticationResponse(jwt));
-    }
-
 
 }
