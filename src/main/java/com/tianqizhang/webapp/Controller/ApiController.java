@@ -60,7 +60,7 @@ public class ApiController {
     }
 
     @PutMapping(value = "/v1/user/self")
-    public ResponseEntity<String> updateUserInfo(@RequestHeader Map<String, String> headers, @RequestBody String jsonstr) {
+    public ResponseEntity<JSON> updateUserInfo(@RequestHeader Map<String, String> headers, @RequestBody String jsonstr) {
 
         String token = headers.get("authorization").split(" ")[1];
         String usernameAndPassword = new String(Base64.getDecoder().decode(token));
@@ -69,19 +69,19 @@ public class ApiController {
 
         User user = userRepo.findByUsername(username);
         if (user == null) {
-            return new ResponseEntity<>("Wrong Account or password!",
+            return new ResponseEntity<>(null,
                     HttpStatus.BAD_REQUEST);
         }
 
         if (!BCrypt.checkpw(password, user.getPassword())) {
-            return new ResponseEntity<>("Wrong Account or password!",
+            return new ResponseEntity<>(null,
                     HttpStatus.BAD_REQUEST);
         }
 
         JSONObject userJsonObject = JSONObject.parseObject(jsonstr);
 
         if (!userJsonObject.containsKey("username") || userJsonObject.keySet().size() != 4) {
-            return new ResponseEntity<>("Invalid input!",
+            return new ResponseEntity<>(null,
                     HttpStatus.BAD_REQUEST);
         }
 
@@ -89,14 +89,14 @@ public class ApiController {
             // Check if the username is correct. User can't update other user's info.
             if (key.equals("username")) {
                 if (!userJsonObject.getString(key).equals(username)) {
-                    return new ResponseEntity<>("Wrong username input!",
+                    return new ResponseEntity<>(null,
                             HttpStatus.BAD_REQUEST);
                 }
             }
 
             // Attempt to update any other field should return 400 Bad Request HTTP response code.
             if (!key.equals("first_name") && !key.equals("last_name") && !key.equals("password") && !key.equals("username")) {
-                return new ResponseEntity<>("Invalid input!",
+                return new ResponseEntity<>(null,
                         HttpStatus.BAD_REQUEST);
             }
         }
@@ -107,36 +107,36 @@ public class ApiController {
                 userJsonObject.getString("password"));
 
         userRepo.save(user);
-        return new ResponseEntity<>("Update successfully",
-                HttpStatus.OK);
+        return new ResponseEntity<>(null,
+                HttpStatus.NO_CONTENT);
     }
 
     @PostMapping(value = "/v1/user")
-    public ResponseEntity<String> createUser(@RequestBody String jsonstr) {
+    public ResponseEntity<JSON> createUser(@RequestBody String jsonstr) {
         JSONObject userJsonObject = JSONObject.parseObject(jsonstr);
 
         String username = userJsonObject.getString("username");
 
         if (username == null) {
-            return new ResponseEntity<>("Invalid input!",
+            return new ResponseEntity<>(null,
                     HttpStatus.BAD_REQUEST);
         }
 
         String regex = "^[a-zA-Z0-9_!#$%&'*+/=?`{|}~^.-]+@[a-zA-Z0-9.-]+$";
         if (!username.matches(regex)) {
-            return new ResponseEntity<>("Username must be a valid email address!",
+            return new ResponseEntity<>(null,
                     HttpStatus.BAD_REQUEST);
         }
 
         if (userRepo.findByUsername(username) != null) {
-            return new ResponseEntity<>("User existed!",
+            return new ResponseEntity<>(null,
                     HttpStatus.BAD_REQUEST);
         }
 
         if (userJsonObject.getString("first_name") == null ||
                 userJsonObject.getString("last_name") == null ||
                 userJsonObject.getString("password") == null) {
-            return new ResponseEntity<>("Invalid input!",
+            return new ResponseEntity<>(null,
                     HttpStatus.BAD_REQUEST);
         }
 
@@ -146,8 +146,8 @@ public class ApiController {
                 userJsonObject.getString("username"));
 
         userRepo.save(user);
-        return new ResponseEntity<>("Create user successfully!",
-                HttpStatus.OK);
+        return new ResponseEntity<>(null,
+                HttpStatus.CREATED);
     }
 
 }
