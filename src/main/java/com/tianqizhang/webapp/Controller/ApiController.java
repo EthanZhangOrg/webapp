@@ -146,7 +146,16 @@ public class ApiController {
                 userJsonObject.getString("username"));
 
         userRepo.save(user);
-        return new ResponseEntity<>(null,
+
+        Map<String, Object> usermap = new HashMap<>();
+        usermap.put("id", user.getId());
+        usermap.put("first_name", user.getFirst_name());
+        usermap.put("last_name", user.getLast_name());
+        usermap.put("username", username);
+        usermap.put("account_created", user.getAccount_created());
+        usermap.put("account_updated", user.getAccount_updated());
+
+        return new ResponseEntity<>(new JSONObject(usermap),
                 HttpStatus.CREATED);
     }
 
