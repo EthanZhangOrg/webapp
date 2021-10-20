@@ -4,7 +4,7 @@ import com.alibaba.fastjson.JSON;
 import com.tianqizhang.webapp.Models.User;
 import com.tianqizhang.webapp.Repo.UserRepo;
 import com.tianqizhang.webapp.Services.MyUserDetailsService;
-import org.mindrot.bcrypt.BCrypt;
+import org.mindrot.jbcrypt.BCrypt;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
