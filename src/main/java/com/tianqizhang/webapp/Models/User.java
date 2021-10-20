@@ -1,6 +1,6 @@
 package com.tianqizhang.webapp.Models;
 
-import org.mindrot.bcrypt.BCrypt;
+import org.mindrot.jbcrypt.BCrypt;
 
 import javax.persistence.*;
 
