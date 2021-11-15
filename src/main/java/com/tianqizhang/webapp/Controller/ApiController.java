@@ -10,6 +10,7 @@ import com.tianqizhang.webapp.Models.User;
 import com.tianqizhang.webapp.Repo.ImageRepo;
 import com.tianqizhang.webapp.Repo.UserRepo;
 import com.tianqizhang.webapp.Services.MyUserDetailsService;
+import com.timgroup.statsd.ConvenienceMethodProvidingStatsDClient;
 import lombok.extern.slf4j.Slf4j;
 import org.mindrot.jbcrypt.BCrypt;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -64,13 +65,19 @@ public class ApiController {
     public ResponseEntity<JSON> getUserInfo(@RequestHeader Map<String, String> headers) {
 
         statsd.incrementCounter("getUserInfo");
+        long apiCallStart = System.currentTimeMillis();
 
         String token = headers.get("authorization").split(" ")[1];
         String usernameAndPassword = new String(Base64.getDecoder().decode(token));
         String username = usernameAndPassword.split(":")[0];
         String password = usernameAndPassword.split(":")[1];
 
+        long databaseQueryStart = System.currentTimeMillis();
+
         User user = userRepo.findByUsername(username);
+
+        statsd.recordExecutionTimeToNow("queryUserByUsername-DatabaseQuery", databaseQueryStart);
+
         if (user == null) {
             return new ResponseEntity<>(null,
                     HttpStatus.UNAUTHORIZED);
@@ -89,12 +96,16 @@ public class ApiController {
         usermap.put("account_created", user.getAccount_created());
         usermap.put("account_updated", user.getAccount_updated());
 
+        statsd.recordExecutionTimeToNow("getUserInfo-APICall", apiCallStart);
+
         return new ResponseEntity<>(new JSONObject(usermap),
                 HttpStatus.OK);
     }
 
     @PutMapping(value = "/v1/user/self")
     public ResponseEntity<JSON> updateUserInfo(@RequestHeader Map<String, String> headers, @RequestBody String jsonstr) {
+
+        long apiCallStart = System.currentTimeMillis();
 
         statsd.incrementCounter("updateUserInfo");
 
@@ -103,7 +114,12 @@ public class ApiController {
         String username = usernameAndPassword.split(":")[0];
         String password = usernameAndPassword.split(":")[1];
 
+        long databaseQueryStart = System.currentTimeMillis();
+
         User user = userRepo.findByUsername(username);
+
+        statsd.recordExecutionTimeToNow("queryUserByUsername-DatabaseQuery", databaseQueryStart);
+
         if (user == null) {
             return new ResponseEntity<>(null,
                     HttpStatus.BAD_REQUEST);
@@ -142,13 +158,22 @@ public class ApiController {
                 userJsonObject.getString("last_name"),
                 userJsonObject.getString("password"));
 
+        long databaseSaveStart = System.currentTimeMillis();
+
         userRepo.save(user);
+
+        statsd.recordExecutionTimeToNow("saveUserToDatabase-DatabaseSave", databaseSaveStart);
+
+        statsd.recordExecutionTimeToNow("updateUserInfo-APICall", apiCallStart);
+
         return new ResponseEntity<>(null,
                 HttpStatus.NO_CONTENT);
     }
 
     @PostMapping(value = "/v1/user")
     public ResponseEntity<JSON> createUser(@RequestBody String jsonstr) {
+
+        long apiCallStart = System.currentTimeMillis();
 
         statsd.incrementCounter("createUser");
 
@@ -167,10 +192,14 @@ public class ApiController {
                     HttpStatus.BAD_REQUEST);
         }
 
+        long databaseQueryStart = System.currentTimeMillis();
+
         if (userRepo.findByUsername(username) != null) {
             return new ResponseEntity<>(null,
                     HttpStatus.BAD_REQUEST);
         }
+
+        statsd.recordExecutionTimeToNow("queryUserByUsername-DatabaseQuery", databaseQueryStart);
 
         if (userJsonObject.getString("first_name") == null ||
                 userJsonObject.getString("last_name") == null ||
@@ -184,7 +213,11 @@ public class ApiController {
                 userJsonObject.getString("password"),
                 userJsonObject.getString("username"));
 
+        long databaseSaveStart = System.currentTimeMillis();
+
         userRepo.save(user);
+
+        statsd.recordExecutionTimeToNow("saveUserToDatabase-DatabaseSave", databaseSaveStart);
 
         Map<String, Object> usermap = new HashMap<>();
         usermap.put("id", user.getId());
@@ -194,12 +227,16 @@ public class ApiController {
         usermap.put("account_created", user.getAccount_created());
         usermap.put("account_updated", user.getAccount_updated());
 
+        statsd.recordExecutionTimeToNow("createUser-APICall", apiCallStart);
+
         return new ResponseEntity<>(new JSONObject(usermap),
                 HttpStatus.CREATED);
     }
 
     @PostMapping(value = "/v1/user/self/pic")
     private ResponseEntity<JSON> uploadUserPic(@RequestHeader Map<String, String> headers, HttpEntity<byte[]> requestEntity) {
+
+        long apiCallStart = System.currentTimeMillis();
 
         statsd.incrementCounter("uploadUserPic");
 
@@ -208,7 +245,12 @@ public class ApiController {
         String username = usernameAndPassword.split(":")[0];
         String password = usernameAndPassword.split(":")[1];
 
+        long databaseQueryStart = System.currentTimeMillis();
+
         User user = userRepo.findByUsername(username);
+
+        statsd.recordExecutionTimeToNow("queryUserByUsername-DatabaseQuery", databaseQueryStart);
+
         if (user == null) {
             return new ResponseEntity<>(null,
                     HttpStatus.BAD_REQUEST);
@@ -239,20 +281,41 @@ public class ApiController {
         String userId = user.getId();
 
         // check if the previous image exist
+
+        long imageDatabaseQueryStart = System.currentTimeMillis();
+
         Image previousImage = imageRepo.findByUserId(userId);
+
+        statsd.recordExecutionTimeToNow("queryImageInfoByUserId-DatabaseQuery", imageDatabaseQueryStart);
+
         if (previousImage != null) {
+            long s3DeletionStart = System.currentTimeMillis();
             s3Client.deleteObject(bucketName, userId + "/" + previousImage.getFileName());
+            statsd.recordExecutionTimeToNow("deleteImage-S3ServiceCall", s3DeletionStart);
+            long imageDatabaseDeletionStart = System.currentTimeMillis();
             imageRepo.delete(previousImage);
+            statsd.recordExecutionTimeToNow("deleteImage-DatabaseQuery", imageDatabaseDeletionStart);
         }
 
         String fileName = System.currentTimeMillis() + "_pic" + suffix;
         File file = convertBinaryToFile(fileBytes, fileName);
+
+        long s3PutStart = System.currentTimeMillis();
+
         s3Client.putObject(new PutObjectRequest(bucketName, userId + "/" + fileName, file));
+
+        statsd.recordExecutionTimeToNow("putImage-S3ServiceCall", s3PutStart);
+
         file.delete();
 
         String fileUrl = s3Client.getUrl(bucketName, userId + "/" + fileName).toString();
         Image image = new Image(fileName, fileUrl, userId);
+
+        long imageDatabaseSaveStart = System.currentTimeMillis();
+
         imageRepo.save(image);
+
+        statsd.recordExecutionTimeToNow("saveImageToDatabase-DatabaseSave", imageDatabaseSaveStart);
 
         Map<String, Object> imageMap = new HashMap<>();
         imageMap.put("file_name", image.getFileName());
@@ -260,6 +323,8 @@ public class ApiController {
         imageMap.put("url", image.getUrl());
         imageMap.put("upload_date", image.getUploadDate());
         imageMap.put("user_id", image.getUserId());
+
+        statsd.recordExecutionTimeToNow("uploadUserPic-APICall", apiCallStart);
 
         return new ResponseEntity<>(new JSONObject(imageMap),
                 HttpStatus.CREATED);
@@ -278,6 +343,7 @@ public class ApiController {
     @GetMapping(value = "/v1/user/self/pic")
     private ResponseEntity<JSON> getUserPic(@RequestHeader Map<String, String> headers) {
 
+        long apiCallStart = System.currentTimeMillis();
         statsd.incrementCounter("getUserPic");
 
         String token = headers.get("authorization").split(" ")[1];
@@ -285,7 +351,12 @@ public class ApiController {
         String username = usernameAndPassword.split(":")[0];
         String password = usernameAndPassword.split(":")[1];
 
+        long databaseQueryStart = System.currentTimeMillis();
+
         User user = userRepo.findByUsername(username);
+
+        statsd.recordExecutionTimeToNow("queryUserByUsername-DatabaseQuery", databaseQueryStart);
+
         if (user == null) {
             return new ResponseEntity<>(null,
                     HttpStatus.BAD_REQUEST);
@@ -297,7 +368,12 @@ public class ApiController {
         }
 
         String userId = user.getId();
+
+        long imageDatabaseQueryStart = System.currentTimeMillis();
+
         Image image = imageRepo.findByUserId(userId);
+
+        statsd.recordExecutionTimeToNow("queryImageInfoByUserId-DatabaseQuery", imageDatabaseQueryStart);
 
         if (image == null) {
             return new ResponseEntity<>(null,
@@ -311,6 +387,8 @@ public class ApiController {
         imageMap.put("upload_date", image.getUploadDate());
         imageMap.put("user_id", image.getUserId());
 
+        statsd.recordExecutionTimeToNow("getUserPic-APICall", apiCallStart);
+
         return new ResponseEntity<>(new JSONObject(imageMap),
                 HttpStatus.OK);
     }
@@ -318,6 +396,7 @@ public class ApiController {
     @DeleteMapping (value = "/v1/user/self/pic")
     private ResponseEntity<JSON> deleteUserPic(@RequestHeader Map<String, String> headers) {
 
+        long apiCallStart = System.currentTimeMillis();
         statsd.incrementCounter("deleteUserPic");
 
         String token = headers.get("authorization").split(" ")[1];
@@ -325,7 +404,12 @@ public class ApiController {
         String username = usernameAndPassword.split(":")[0];
         String password = usernameAndPassword.split(":")[1];
 
+        long databaseQueryStart = System.currentTimeMillis();
+
         User user = userRepo.findByUsername(username);
+
+        statsd.recordExecutionTimeToNow("queryUserByUsername-DatabaseQuery", databaseQueryStart);
+
         if (user == null) {
             return new ResponseEntity<>(null,
                     HttpStatus.UNAUTHORIZED);
@@ -337,17 +421,30 @@ public class ApiController {
         }
 
         String userId = user.getId();
+
+        long imageDatabaseQueryStart = System.currentTimeMillis();
+
         Image image = imageRepo.findByUserId(userId);
+
+        statsd.recordExecutionTimeToNow("queryImageInfoByUserId-DatabaseQuery", imageDatabaseQueryStart);
 
         if (image == null) {
             return new ResponseEntity<>(null,
                     HttpStatus.NOT_FOUND);
         }
 
+        long s3DeletionStart = System.currentTimeMillis();
         s3Client.deleteObject(bucketName, userId + "/" + image.getFileName());
+        statsd.recordExecutionTimeToNow("deleteImage-S3ServiceCall", s3DeletionStart);
+
+        long imageDatabaseDeletionStart = System.currentTimeMillis();
         imageRepo.delete(image);
+        statsd.recordExecutionTimeToNow("deleteImage-DatabaseQuery", imageDatabaseDeletionStart);
+
+        statsd.recordExecutionTimeToNow("deleteUserPic-APICall", apiCallStart);
 
         return new ResponseEntity<>(null,
                 HttpStatus.NO_CONTENT);
     }
+
 }
