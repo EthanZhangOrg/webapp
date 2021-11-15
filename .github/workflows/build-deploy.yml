@@ -1,0 +1,79 @@
+name: Build & Deploy WebApp
+
+env:
+  ARTIFACT_NAME: csye6225-webapp-${{ github.sha }}.zip
+  CODEDEPLOY_APPLICATION_NAME: csye6225-webapp
+  CODEDEPLOY_APPLICATION_DEPLOYMENT_GROUP_NAME: csye6225-webapp-deployment
+  AWS_REGION: us-east-1
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  ci_cd:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up JDK 1.8
+      uses: actions/setup-java@v1
+      with:
+        java-version: 1.8
+
+    - name: Build with Maven
+      run: |
+        echo "${{ env.ARTIFACT_NAME }}"
+        pwd
+        ls
+        mvn -B clean package --file pom.xml
+        pwd
+        cd target
+        ls -al
+
+    - name: Build Deployment Artifact
+      run: |
+        mkdir codedeploy_artifact
+        zip -r ${{ env.ARTIFACT_NAME }} ./target/webapp-0.0.1-SNAPSHOT.jar codedeploy/*.sh appspec.yml
+        pwd
+        ls -al
+        mv ${{ env.ARTIFACT_NAME }} codedeploy_artifact/
+        ls -al
+        pwd
+        cd codedeploy_artifact
+        pwd
+        ls -al
+        cd ..
+        pwd
+        ls -al
+        
+        
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with: 
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Copy Artifact to S3
+      run: |
+        aws s3 sync ./codedeploy_artifact s3://${{ secrets.S3_CODEDEPLOY_BUCKET_PROD }}
+
+    - name: Codedeploy API Call
+      run: |
+        output=$(aws deploy create-deployment  \
+          --application-name ${{ env.CODEDEPLOY_APPLICATION_NAME }} \
+          --deployment-config-name CodeDeployDefault.AllAtOnce \
+          --deployment-group-name ${{ env.CODEDEPLOY_APPLICATION_DEPLOYMENT_GROUP_NAME }} \
+          --description "CSYE6225 - CodeDeploy" \
+          --s3-location bucket=${{ secrets.S3_CODEDEPLOY_BUCKET_PROD }},key=${{ env.ARTIFACT_NAME }},bundleType=zip \
+          --region ${{ env.AWS_REGION }} \
+          --ignore-application-stop-failures \
+          --output json)
+
+        echo $output
+
+        dId=$(echo $output | jq -r '.deploymentId')
+
+        aws deploy wait deployment-successful --deployment-id $dId
+        
