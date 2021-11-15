@@ -10,6 +10,7 @@ import com.tianqizhang.webapp.Models.User;
 import com.tianqizhang.webapp.Repo.ImageRepo;
 import com.tianqizhang.webapp.Repo.UserRepo;
 import com.tianqizhang.webapp.Services.MyUserDetailsService;
+import lombok.extern.slf4j.Slf4j;
 import org.mindrot.jbcrypt.BCrypt;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -31,6 +32,10 @@ import java.util.Objects;
 import com.alibaba.fastjson.JSONObject;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.timgroup.statsd.StatsDClient;
+import com.timgroup.statsd.NonBlockingStatsDClient;
+
+@Slf4j
 @RestController
 public class ApiController {
     @Autowired
@@ -53,8 +58,12 @@ public class ApiController {
     @Autowired
     private AmazonS3 s3Client;
 
+    private static final StatsDClient statsd = new NonBlockingStatsDClient(null, "localhost", 8125);
+
     @GetMapping(value = "/v1/user/self")
     public ResponseEntity<JSON> getUserInfo(@RequestHeader Map<String, String> headers) {
+
+        statsd.incrementCounter("getUserInfo");
 
         String token = headers.get("authorization").split(" ")[1];
         String usernameAndPassword = new String(Base64.getDecoder().decode(token));
@@ -86,6 +95,8 @@ public class ApiController {
 
     @PutMapping(value = "/v1/user/self")
     public ResponseEntity<JSON> updateUserInfo(@RequestHeader Map<String, String> headers, @RequestBody String jsonstr) {
+
+        statsd.incrementCounter("updateUserInfo");
 
         String token = headers.get("authorization").split(" ")[1];
         String usernameAndPassword = new String(Base64.getDecoder().decode(token));
@@ -138,6 +149,9 @@ public class ApiController {
 
     @PostMapping(value = "/v1/user")
     public ResponseEntity<JSON> createUser(@RequestBody String jsonstr) {
+
+        statsd.incrementCounter("createUser");
+
         JSONObject userJsonObject = JSONObject.parseObject(jsonstr);
 
         String username = userJsonObject.getString("username");
@@ -186,6 +200,9 @@ public class ApiController {
 
     @PostMapping(value = "/v1/user/self/pic")
     private ResponseEntity<JSON> uploadUserPic(@RequestHeader Map<String, String> headers, HttpEntity<byte[]> requestEntity) {
+
+        statsd.incrementCounter("uploadUserPic");
+
         String token = headers.get("authorization").split(" ")[1];
         String usernameAndPassword = new String(Base64.getDecoder().decode(token));
         String username = usernameAndPassword.split(":")[0];
@@ -260,6 +277,9 @@ public class ApiController {
 
     @GetMapping(value = "/v1/user/self/pic")
     private ResponseEntity<JSON> getUserPic(@RequestHeader Map<String, String> headers) {
+
+        statsd.incrementCounter("getUserPic");
+
         String token = headers.get("authorization").split(" ")[1];
         String usernameAndPassword = new String(Base64.getDecoder().decode(token));
         String username = usernameAndPassword.split(":")[0];
@@ -297,6 +317,9 @@ public class ApiController {
 
     @DeleteMapping (value = "/v1/user/self/pic")
     private ResponseEntity<JSON> deleteUserPic(@RequestHeader Map<String, String> headers) {
+
+        statsd.incrementCounter("deleteUserPic");
+
         String token = headers.get("authorization").split(" ")[1];
         String usernameAndPassword = new String(Base64.getDecoder().decode(token));
         String username = usernameAndPassword.split(":")[0];
