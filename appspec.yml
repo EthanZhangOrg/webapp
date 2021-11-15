@@ -4,7 +4,7 @@ os: linux
 files: 
   - source: ./target/webapp-0.0.1-SNAPSHOT.jar
     destination: /home/ubuntu/webapp_jar/
-  - source: ./cloudwatch-config.json
+  - source: ./codedeploy/cloudwatch-config.json
     destination: /opt/
 
 hooks:
