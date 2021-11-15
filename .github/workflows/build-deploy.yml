@@ -34,7 +34,7 @@ jobs:
     - name: Build Deployment Artifact
       run: |
         mkdir codedeploy_artifact
-        zip -r ${{ env.ARTIFACT_NAME }} ./target/webapp-0.0.1-SNAPSHOT.jar codedeploy/*.sh appspec.yml
+        zip -r ${{ env.ARTIFACT_NAME }} ./target/webapp-0.0.1-SNAPSHOT.jar codedeploy/*.sh appspec.yml cloudwatch-config.json
         pwd
         ls -al
         mv ${{ env.ARTIFACT_NAME }} codedeploy_artifact/
