@@ -61,6 +61,12 @@ public class ApiController {
 
     private static final StatsDClient statsd = new NonBlockingStatsDClient(null, "localhost", 8125);
 
+    @GetMapping(value = "/")
+    public ResponseEntity<String> sayHello() {
+        return new ResponseEntity<>("hello world!",
+                HttpStatus.OK);
+    }
+
     @GetMapping(value = "/v1/user/self")
     public ResponseEntity<JSON> getUserInfo(@RequestHeader Map<String, String> headers) {
 
