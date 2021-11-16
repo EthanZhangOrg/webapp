@@ -48,11 +48,6 @@ public class ApiController {
     @Autowired
     private MyUserDetailsService userDetailsService;
 
-    @GetMapping(value = "/")
-    public String getPage() {
-        return "Welcome!";
-    }
-
     @Value("${s3.bucket.name}")
     private String bucketName;
 
