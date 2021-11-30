@@ -8,7 +8,7 @@ import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBTable;
 import java.security.SecureRandom;
 import java.util.Base64;
 
-@DynamoDBTable(tableName = "dynamodb-table")
+@DynamoDBTable(tableName = "User-Tokens")
 public class DynamodbUser {
 
     private static final SecureRandom secureRandom = new SecureRandom(); //threadsafe
