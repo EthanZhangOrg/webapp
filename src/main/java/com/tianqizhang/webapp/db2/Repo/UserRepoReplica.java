@@ -1,9 +1,9 @@
-package com.tianqizhang.webapp.Repo;
+package com.tianqizhang.webapp.db2.Repo;
 
-import com.tianqizhang.webapp.Models.User;
+import com.tianqizhang.webapp.db2.Models.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface UserRepo extends JpaRepository<User, String> {
+public interface UserRepoReplica extends JpaRepository<User, String> {
 
     /**
      * equivalent to 'select * from user where name=?'

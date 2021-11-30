@@ -1,16 +1,16 @@
 package com.tianqizhang.webapp.Controller;
 
 import com.alibaba.fastjson.JSON;
+import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapper;
 import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.model.CannedAccessControlList;
-import com.amazonaws.services.s3.model.GeneratePresignedUrlRequest;
 import com.amazonaws.services.s3.model.PutObjectRequest;
-import com.tianqizhang.webapp.Models.Image;
-import com.tianqizhang.webapp.Models.User;
-import com.tianqizhang.webapp.Repo.ImageRepo;
-import com.tianqizhang.webapp.Repo.UserRepo;
-import com.tianqizhang.webapp.Services.MyUserDetailsService;
-import com.timgroup.statsd.ConvenienceMethodProvidingStatsDClient;
+import com.amazonaws.services.sns.AmazonSNSClient;
+import com.amazonaws.services.sns.model.PublishRequest;
+import com.tianqizhang.webapp.db1.Models.Image;
+import com.tianqizhang.webapp.db1.Models.User;
+import com.tianqizhang.webapp.db1.Repo.ImageRepo;
+import com.tianqizhang.webapp.db1.Repo.UserRepo;
+import com.tianqizhang.webapp.dynamodb.Models.DynamodbUser;
 import lombok.extern.slf4j.Slf4j;
 import org.mindrot.jbcrypt.BCrypt;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,20 +21,19 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.net.URL;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
 import com.alibaba.fastjson.JSONObject;
-import org.springframework.web.multipart.MultipartFile;
 
 import com.timgroup.statsd.StatsDClient;
 import com.timgroup.statsd.NonBlockingStatsDClient;
+
+import static com.tianqizhang.webapp.db1.Models.User.verifyUser;
 
 @Slf4j
 @RestController
@@ -45,61 +44,26 @@ public class ApiController {
     @Autowired
     private ImageRepo imageRepo;
 
-    @Autowired
-    private MyUserDetailsService userDetailsService;
-
     @Value("${s3.bucket.name}")
     private String bucketName;
 
     @Autowired
     private AmazonS3 s3Client;
 
+    @Autowired
+    private DynamoDBMapper dynamoDBMapper;
+
+    @Autowired
+    private AmazonSNSClient amazonSNSClient;
+
+    @Value("${sns.topic.arn}")
+    private String topic_arn;
+
     private static final StatsDClient statsd = new NonBlockingStatsDClient(null, "localhost", 8125);
 
     @GetMapping(value = "/")
     public ResponseEntity<String> sayHello() {
         return new ResponseEntity<>("hello world!",
-                HttpStatus.OK);
-    }
-
-    @GetMapping(value = "/v1/user/self")
-    public ResponseEntity<JSON> getUserInfo(@RequestHeader Map<String, String> headers) {
-
-        statsd.incrementCounter("getUserInfo");
-        long apiCallStart = System.currentTimeMillis();
-
-        String token = headers.get("authorization").split(" ")[1];
-        String usernameAndPassword = new String(Base64.getDecoder().decode(token));
-        String username = usernameAndPassword.split(":")[0];
-        String password = usernameAndPassword.split(":")[1];
-
-        long databaseQueryStart = System.currentTimeMillis();
-
-        User user = userRepo.findByUsername(username);
-
-        statsd.recordExecutionTimeToNow("queryUserByUsername-DatabaseQuery", databaseQueryStart);
-
-        if (user == null) {
-            return new ResponseEntity<>(null,
-                    HttpStatus.UNAUTHORIZED);
-        }
-
-        if (!BCrypt.checkpw(password, user.getPassword())) {
-            return new ResponseEntity<>(null,
-                    HttpStatus.UNAUTHORIZED);
-        }
-
-        Map<String, Object> usermap = new HashMap<>();
-        usermap.put("id", user.getId());
-        usermap.put("first_name", user.getFirst_name());
-        usermap.put("last_name", user.getLast_name());
-        usermap.put("username", username);
-        usermap.put("account_created", user.getAccount_created());
-        usermap.put("account_updated", user.getAccount_updated());
-
-        statsd.recordExecutionTimeToNow("getUserInfo-APICall", apiCallStart);
-
-        return new ResponseEntity<>(new JSONObject(usermap),
                 HttpStatus.OK);
     }
 
@@ -127,6 +91,11 @@ public class ApiController {
         }
 
         if (!BCrypt.checkpw(password, user.getPassword())) {
+            return new ResponseEntity<>(null,
+                    HttpStatus.BAD_REQUEST);
+        }
+
+        if (!user.getVerified()) {
             return new ResponseEntity<>(null,
                     HttpStatus.BAD_REQUEST);
         }
@@ -227,8 +196,23 @@ public class ApiController {
         usermap.put("username", username);
         usermap.put("account_created", user.getAccount_created());
         usermap.put("account_updated", user.getAccount_updated());
+        usermap.put("verified", user.getVerified());
+        usermap.put("verified_on", user.getVerified_on());
 
         statsd.recordExecutionTimeToNow("createUser-APICall", apiCallStart);
+
+        // save token in dynamodb
+        DynamodbUser dynamodbUser = new DynamodbUser(username);
+        dynamoDBMapper.save(dynamodbUser);
+
+        // publish msg to sns topic
+        Map<String, Object> msgMap = new HashMap<>();
+        msgMap.put("email", username);
+        msgMap.put("token", dynamodbUser.getToken());
+        msgMap.put("msg_type", "JsonString");
+        String msg = msgMap.toString();
+        PublishRequest publishRequest = new PublishRequest(topic_arn, msg);
+        amazonSNSClient.publish(publishRequest);
 
         return new ResponseEntity<>(new JSONObject(usermap),
                 HttpStatus.CREATED);
@@ -258,6 +242,11 @@ public class ApiController {
         }
 
         if (!BCrypt.checkpw(password, user.getPassword())) {
+            return new ResponseEntity<>(null,
+                    HttpStatus.BAD_REQUEST);
+        }
+
+        if (!user.getVerified()) {
             return new ResponseEntity<>(null,
                     HttpStatus.BAD_REQUEST);
         }
@@ -341,59 +330,6 @@ public class ApiController {
         return file;
     }
 
-    @GetMapping(value = "/v1/user/self/pic")
-    private ResponseEntity<JSON> getUserPic(@RequestHeader Map<String, String> headers) {
-
-        long apiCallStart = System.currentTimeMillis();
-        statsd.incrementCounter("getUserPic");
-
-        String token = headers.get("authorization").split(" ")[1];
-        String usernameAndPassword = new String(Base64.getDecoder().decode(token));
-        String username = usernameAndPassword.split(":")[0];
-        String password = usernameAndPassword.split(":")[1];
-
-        long databaseQueryStart = System.currentTimeMillis();
-
-        User user = userRepo.findByUsername(username);
-
-        statsd.recordExecutionTimeToNow("queryUserByUsername-DatabaseQuery", databaseQueryStart);
-
-        if (user == null) {
-            return new ResponseEntity<>(null,
-                    HttpStatus.BAD_REQUEST);
-        }
-
-        if (!BCrypt.checkpw(password, user.getPassword())) {
-            return new ResponseEntity<>(null,
-                    HttpStatus.BAD_REQUEST);
-        }
-
-        String userId = user.getId();
-
-        long imageDatabaseQueryStart = System.currentTimeMillis();
-
-        Image image = imageRepo.findByUserId(userId);
-
-        statsd.recordExecutionTimeToNow("queryImageInfoByUserId-DatabaseQuery", imageDatabaseQueryStart);
-
-        if (image == null) {
-            return new ResponseEntity<>(null,
-                    HttpStatus.NOT_FOUND);
-        }
-
-        Map<String, Object> imageMap = new HashMap<>();
-        imageMap.put("file_name", image.getFileName());
-        imageMap.put("id", image.getId());
-        imageMap.put("url", image.getUrl());
-        imageMap.put("upload_date", image.getUploadDate());
-        imageMap.put("user_id", image.getUserId());
-
-        statsd.recordExecutionTimeToNow("getUserPic-APICall", apiCallStart);
-
-        return new ResponseEntity<>(new JSONObject(imageMap),
-                HttpStatus.OK);
-    }
-
     @DeleteMapping (value = "/v1/user/self/pic")
     private ResponseEntity<JSON> deleteUserPic(@RequestHeader Map<String, String> headers) {
 
@@ -419,6 +355,11 @@ public class ApiController {
         if (!BCrypt.checkpw(password, user.getPassword())) {
             return new ResponseEntity<>(null,
                     HttpStatus.UNAUTHORIZED);
+        }
+
+        if (!user.getVerified()) {
+            return new ResponseEntity<>(null,
+                    HttpStatus.BAD_REQUEST);
         }
 
         String userId = user.getId();
@@ -448,4 +389,21 @@ public class ApiController {
                 HttpStatus.NO_CONTENT);
     }
 
+    @PutMapping(value = "/v1/verifyUserEmail")
+    public ResponseEntity<JSON> verifyUserEmail(@RequestParam String email, @RequestParam String token) {
+        DynamodbUser dynamodbUser = dynamoDBMapper.load(DynamodbUser.class, email);
+
+        if (dynamodbUser == null) {
+            return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
+        }
+
+        if (dynamodbUser.getToken().equals(token)) {
+            User user = userRepo.findByUsername(email);
+            verifyUser(user);
+        } else {
+            return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
+        }
+
+        return new ResponseEntity<>(null, HttpStatus.OK);
+    }
 }

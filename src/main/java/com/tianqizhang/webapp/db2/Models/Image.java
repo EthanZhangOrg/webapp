@@ -1,4 +1,4 @@
-package com.tianqizhang.webapp.Models;
+package com.tianqizhang.webapp.db2.Models;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
