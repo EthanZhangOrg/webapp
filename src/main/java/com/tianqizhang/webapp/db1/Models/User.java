@@ -1,9 +1,10 @@
-package com.tianqizhang.webapp.Models;
+package com.tianqizhang.webapp.db1.Models;
 
 import org.mindrot.jbcrypt.BCrypt;
 
-import javax.persistence.*;
-
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.UUID;
@@ -21,6 +22,7 @@ public class User  {
         String date = sdf1.format(new Date());
         this.account_created = date;
         this.account_updated = date;
+        this.verified = false;
     }
 
     public User() {
@@ -42,6 +44,14 @@ public class User  {
         user.setAccount_updated(date);
 
         return user;
+    }
+
+    public static void verifyUser(User user) {
+        user.setVerified(true);
+
+        SimpleDateFormat sdf1 = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
+        String date = sdf1.format(new Date());
+        user.setVerified_on(date);
     }
 
     public String getId() {
@@ -100,6 +110,22 @@ public class User  {
         this.account_updated = account_updated;
     }
 
+    public Boolean getVerified() {
+        return verified;
+    }
+
+    public void setVerified(Boolean verified) {
+        this.verified = verified;
+    }
+
+    public String getVerified_on() {
+        return verified_on;
+    }
+
+    public void setVerified_on(String verified_on) {
+        this.verified_on = verified_on;
+    }
+
     @Id
     private String id;
 
@@ -120,4 +146,10 @@ public class User  {
 
     @Column
     private String account_updated;
+
+    @Column
+    private Boolean verified;
+
+    @Column
+    private String verified_on;
 }
