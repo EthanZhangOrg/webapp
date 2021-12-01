@@ -400,6 +400,7 @@ public class ApiController {
 
     @GetMapping(value = "/v1/verifyUserEmail")
     public ResponseEntity<JSON> verifyUserEmail(@RequestParam String email, @RequestParam String token) {
+        email = email.replaceAll(" ", "+");
         DynamodbUser dynamodbUser = dynamoDBMapper.load(DynamodbUser.class, email);
 
         if (dynamodbUser == null) {
