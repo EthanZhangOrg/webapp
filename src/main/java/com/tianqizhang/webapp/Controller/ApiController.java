@@ -13,6 +13,8 @@ import com.tianqizhang.webapp.db1.Repo.UserRepo;
 import com.tianqizhang.webapp.dynamodb.Models.DynamodbUser;
 import lombok.extern.slf4j.Slf4j;
 import org.mindrot.jbcrypt.BCrypt;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -60,6 +62,8 @@ public class ApiController {
     private String topic_arn;
 
     private static final StatsDClient statsd = new NonBlockingStatsDClient(null, "localhost", 8125);
+
+    final Logger logger = LoggerFactory.getLogger(ApiController.class);
 
     @GetMapping(value = "/")
     public ResponseEntity<String> sayHello() {
@@ -211,8 +215,13 @@ public class ApiController {
         msgMap.put("token", dynamodbUser.getToken());
         msgMap.put("msg_type", "JsonString");
         String msg = new JSONObject(msgMap).toString();
+
+        logger.info("the msg which will be published into sns topic is: " + msg);
+
         PublishRequest publishRequest = new PublishRequest(topic_arn, msg);
         amazonSNSClient.publish(publishRequest);
+
+        logger.info("message published!");
 
         return new ResponseEntity<>(new JSONObject(usermap),
                 HttpStatus.CREATED);
