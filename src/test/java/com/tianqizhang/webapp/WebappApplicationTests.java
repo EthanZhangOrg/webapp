@@ -17,6 +17,8 @@ import com.amazonaws.services.sns.model.PublishRequest;
 import com.tianqizhang.webapp.dynamodb.Models.DynamodbUser;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -61,5 +63,20 @@ class WebappApplicationTests {
 //        String msg = new JSONObject(msgMap).toString();
 //        PublishRequest publishRequest = new PublishRequest(topic_arn, msg);
 //        amazonSNSClient.publish(publishRequest);
+//    }
+//
+//    @Test
+//    void test2() {
+//        AmazonDynamoDB client = AmazonDynamoDBClientBuilder.standard()
+//                .withCredentials(new AWSStaticCredentialsProvider(new BasicAWSCredentials("AKIAQSRZMGLTK7Z5WCNH", "OuIg/6wbo263kJeULY9Lfjb2JWP1xnM6nDaJ7GtB")))
+//                .withRegion(Regions.US_EAST_1)
+//                .build();
+//        DynamoDBMapper dynamoDBMapper = new DynamoDBMapper(client, DynamoDBMapperConfig.DEFAULT);
+//        DynamodbUser dynamodbUser = dynamoDBMapper.load(DynamodbUser.class, "ethanzhang1997@gmail.com");
+//
+//        if (dynamodbUser == null) {
+//            System.out.println("user == null");
+//        }
+//        System.out.println("token: " + dynamodbUser.getToken());
 //    }
 }

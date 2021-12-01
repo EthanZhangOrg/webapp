@@ -398,17 +398,20 @@ public class ApiController {
                 HttpStatus.NO_CONTENT);
     }
 
-    @PutMapping(value = "/v1/verifyUserEmail")
+    @GetMapping(value = "/v1/verifyUserEmail")
     public ResponseEntity<JSON> verifyUserEmail(@RequestParam String email, @RequestParam String token) {
         DynamodbUser dynamodbUser = dynamoDBMapper.load(DynamodbUser.class, email);
 
         if (dynamodbUser == null) {
+            logger.info("This dynamodbUser doesn't exist! Email is: " + email);
             return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
         }
 
         if (dynamodbUser.getToken().equals(token)) {
             User user = userRepo.findByUsername(email);
+            logger.info("Start verify user! Email is: " + email);
             verifyUser(user);
+            logger.info("Verified! Email is: " + email);
         } else {
             return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
         }
