@@ -20,7 +20,7 @@ public class DynamodbUser {
     public DynamodbUser(String user_email) {
         this.user_email = user_email;
         this.token = generateNewToken();
-        this.expirationTime = System.currentTimeMillis() + 5 * 60 * 1000;
+        this.expirationTime = System.currentTimeMillis() / 1000 + 5 * 60;
         this.used = false;
     }
 
