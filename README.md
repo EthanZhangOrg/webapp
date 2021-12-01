@@ -1,7 +1,7 @@
 # webapp
 Tianqi Zhang 001056916
 
-assignment6 for CSYE 6225
+assignment7 for CSYE 6225
 
 Now this webapp springboot application uses external application.properties
 
