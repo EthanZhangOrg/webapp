@@ -24,6 +24,10 @@ public class DynamodbUser {
         this.used = false;
     }
 
+    public DynamodbUser() {
+
+    }
+
     public String getUser_email() {
         return user_email;
     }
