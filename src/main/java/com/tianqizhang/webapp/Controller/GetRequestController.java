@@ -80,6 +80,8 @@ public class GetRequestController {
         usermap.put("username", username);
         usermap.put("account_created", user.getAccount_created());
         usermap.put("account_updated", user.getAccount_updated());
+        usermap.put("verified", user.getVerified());
+        usermap.put("verified_on", user.getVerified_on());
 
         statsd.recordExecutionTimeToNow("getUserInfo-APICall", apiCallStart);
 
