@@ -40,24 +40,24 @@ class WebappApplicationTests {
 //        dynamoDBMapper.save(dynamodbUser);
     }
 
-    @Test
-    void test1() {
-        String username = "ethanzhang1997@gmail.com";
-        AmazonSNSClient amazonSNSClient = (AmazonSNSClient)AmazonSNSClientBuilder
-                .standard()
-                .withCredentials(new AWSStaticCredentialsProvider(new BasicAWSCredentials("AKIAQSRZMGLTK7Z5WCNH", "OuIg/6wbo263kJeULY9Lfjb2JWP1xnM6nDaJ7GtB")))
-                .withRegion(Regions.US_EAST_1)
-                .build();
-
-        String topic_arn = "arn:aws:sns:us-east-1:039848784614:csye6225-fall2021-topic";
-
-        // publish msg to sns topic
-        Map<String, Object> msgMap = new HashMap<>();
-        msgMap.put("email", username);
-        msgMap.put("token", "testToken");
-        msgMap.put("msg_type", "JsonString");
-        String msg = new JSONObject(msgMap).toString();
-        PublishRequest publishRequest = new PublishRequest(topic_arn, msg);
-        amazonSNSClient.publish(publishRequest);
-    }
+//    @Test
+//    void test1() {
+//        String username = "ethanzhang1997@gmail.com";
+//        AmazonSNSClient amazonSNSClient = (AmazonSNSClient)AmazonSNSClientBuilder
+//                .standard()
+//                .withCredentials(new AWSStaticCredentialsProvider(new BasicAWSCredentials("AKIAQSRZMGLTK7Z5WCNH", "OuIg/6wbo263kJeULY9Lfjb2JWP1xnM6nDaJ7GtB")))
+//                .withRegion(Regions.US_EAST_1)
+//                .build();
+//
+//        String topic_arn = "arn:aws:sns:us-east-1:039848784614:csye6225-fall2021-topic";
+//
+//        // publish msg to sns topic
+//        Map<String, Object> msgMap = new HashMap<>();
+//        msgMap.put("email", username);
+//        msgMap.put("token", "testToken");
+//        msgMap.put("msg_type", "JsonString");
+//        String msg = new JSONObject(msgMap).toString();
+//        PublishRequest publishRequest = new PublishRequest(topic_arn, msg);
+//        amazonSNSClient.publish(publishRequest);
+//    }
 }
