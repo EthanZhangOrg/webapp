@@ -412,6 +412,7 @@ public class ApiController {
             logger.info("Start verify user! Email is: " + email);
             verifyUser(user);
             logger.info("Verified! Email is: " + email);
+            userRepo.save(user);
         } else {
             return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
         }
