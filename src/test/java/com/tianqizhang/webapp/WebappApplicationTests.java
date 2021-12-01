@@ -8,6 +8,9 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapper;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapperConfig;
+import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBSaveExpression;
+import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.amazonaws.services.dynamodbv2.model.ExpectedAttributeValue;
 import com.amazonaws.services.sns.AmazonSNSClient;
 import com.amazonaws.services.sns.AmazonSNSClientBuilder;
 import com.amazonaws.services.sns.model.PublishRequest;
@@ -23,19 +26,18 @@ class WebappApplicationTests {
     void test() {
         String username = "ethanzhang1997@gmail.com";
 
-        Map<String, Object> msgMap = new HashMap<>();
-        msgMap.put("email", username);
-        msgMap.put("token", "12345678");
-        msgMap.put("msg_type", "JsonString");
-        String msg = new JSONObject(msgMap).toString();
-        System.out.println(msg);
+//        Map<String, Object> msgMap = new HashMap<>();
+//        msgMap.put("email", username);
+//        msgMap.put("token", "12345678");
+//        msgMap.put("msg_type", "JsonString");
+//        String msg = new JSONObject(msgMap).toString();
+//        System.out.println(msg);
 
 //        AmazonDynamoDB client = AmazonDynamoDBClientBuilder.standard()
 //                .withCredentials(new AWSStaticCredentialsProvider(new BasicAWSCredentials("AKIAQSRZMGLTK7Z5WCNH", "OuIg/6wbo263kJeULY9Lfjb2JWP1xnM6nDaJ7GtB")))
 //                .withRegion(Regions.US_EAST_1)
 //                .build();
 //        DynamoDBMapper dynamoDBMapper = new DynamoDBMapper(client, DynamoDBMapperConfig.DEFAULT);
-//
 //        DynamodbUser dynamodbUser = new DynamodbUser(username);
 //        dynamoDBMapper.save(dynamodbUser);
     }

@@ -2,7 +2,6 @@ package com.tianqizhang.webapp.Controller;
 
 import com.alibaba.fastjson.JSON;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapper;
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.amazonaws.services.sns.AmazonSNSClient;
@@ -207,13 +206,13 @@ public class ApiController {
         statsd.recordExecutionTimeToNow("createUser-APICall", apiCallStart);
 
         // save token in dynamodb
-        Map<String, AttributeValue> build = DynamodbUser.build(username);
-        dynamoDBMapper.save(build);
+        DynamodbUser dynamodbUser = new DynamodbUser(username);
+        dynamoDBMapper.save(dynamodbUser);
 
         // publish msg to sns topic
         Map<String, Object> msgMap = new HashMap<>();
         msgMap.put("email", username);
-        msgMap.put("token", build.get("token"));
+        msgMap.put("token", dynamodbUser.getToken());
         msgMap.put("msg_type", "JsonString");
         String msg = new JSONObject(msgMap).toString();
 
