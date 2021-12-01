@@ -210,7 +210,7 @@ public class ApiController {
         msgMap.put("email", username);
         msgMap.put("token", dynamodbUser.getToken());
         msgMap.put("msg_type", "JsonString");
-        String msg = msgMap.toString();
+        String msg = new JSONObject(msgMap).toString();
         PublishRequest publishRequest = new PublishRequest(topic_arn, msg);
         amazonSNSClient.publish(publishRequest);
 
