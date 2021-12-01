@@ -30,7 +30,7 @@ public class DynamodbUser {
         map.put("user_mail", new AttributeValue().withS(user_email));
         map.put("token", new AttributeValue().withS(token));
         map.put("expirationTime", new AttributeValue().withN(String.valueOf(expirationTime)));
-        map.put("used", new AttributeValue().withBOOL(false);
+        map.put("used", new AttributeValue().withBOOL(false));
         return map;
     }
 
