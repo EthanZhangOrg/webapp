@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # stop the application
-pid=$(sudo lsof -i tcp:80 -t)
+pid=$(sudo lsof -i tcp:443 -t)
 echo $pid
 
 if test -z $pid
