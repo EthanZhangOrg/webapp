@@ -1,7 +1,4 @@
-# webapp
-Tianqi Zhang 001056916
-
-assignment7 for CSYE 6225
+Java Web application on AWS
 
 Now this webapp springboot application uses external application.properties
 
